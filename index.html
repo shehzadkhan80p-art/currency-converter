@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advanced Currency Converter</title>
+
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
+
+<style>
+:root{
+ --bg:#f4f4f4;
+ --card:#fff;
+ --text:#222;
+ --primary:#4f46e5;
+}
+
+.dark{
+ --bg:#121212;
+ --card:#1e1e1e;
+ --text:#fff;
+}
+
+*{
+ margin:0;
+ padding:0;
+ box-sizing:border-box;
+ font-family:Arial,sans-serif;
+}
+
+body{
+ background:var(--bg);
+ color:var(--text);
+ transition:.3s;
+}
+
+.container{
+ max-width:900px;
+ margin:30px auto;
+ padding:20px;
+}
+
+.card{
+ background:var(--card);
+ padding:25px;
+ border-radius:15px;
+ box-shadow:0 5px 15px rgba(0,0,0,.1);
+}
+
+h1{
+ text-align:center;
+ margin-bottom:20px;
+}
+
+.row{
+ display:flex;
+ gap:15px;
+ flex-wrap:wrap;
+}
+
+.col{
+ flex:1;
+ min-width:220px;
+}
+
+input{
+ width:100%;
+ padding:12px;
+ border:1px solid #ccc;
+ border-radius:10px;
+ font-size:16px;
+}
+
+button{
+ border:none;
+ background:var(--primary);
+ color:white;
+ padding:12px 20px;
+ border-radius:10px;
+ cursor:pointer;
+}
+
+.swap{
+ width:100%;
+ margin-top:15px;
+}
+
+.result{
+ margin-top:20px;
+ font-size:24px;
+ font-weight:bold;
+ text-align:center;
+}
+
+.history{
+ margin-top:30px;
+}
+
+.history-item{
+ padding:8px;
+ border-bottom:1px solid #ddd;
+}
+
+.topbar{
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ margin-bottom:20px;
+}
+
+.favorite{
+ margin-top:10px;
+}
+
+.favorite span{
+ display:inline-block;
+ background:var(--primary);
+ color:white;
+ padding:5px 10px;
+ border-radius:20px;
+ margin:3px;
+ cursor:pointer;
+}
+
+.updated{
+ text-align:center;
+ margin-top:10px;
+ font-size:13px;
+ opacity:.7;
+}
+
+@media(max-width:768px){
+ .row{
+  flex-direction:column;
+ }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<div class="topbar">
+<h2>💱 Currency Converter</h2>
+<button id="themeBtn">🌙 Dark Mode</button>
+</div>
+
+<div class="card">
+
+<input type="number" id="amount" value="1" placeholder="Enter Amount">
+
+<div class="row" style="margin-top:15px">
+
+<div class="col">
+<select id="fromCurrency"></select>
+</div>
+
+<div class="col">
+<select id="toCurrency"></select>
+</div>
+
+</div>
+
+<button class="swap" id="swapBtn">⇄ Swap</button>
+
+<div class="favorite">
+<button id="saveFavorite">⭐ Save Favorite</button>
+<div id="favorites"></div>
+</div>
+
+<div class="result" id="result">
+Loading...
+</div>
+
+<div class="updated" id="updated"></div>
+
+<div class="history">
+<h3>Conversion History</h3>
+<div id="history"></div>
+</div>
+
+</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+
+<script>
+
+const currencyList = {
+USD:"🇺🇸 USD",
+EUR:"🇪🇺 EUR",
+GBP:"🇬🇧 GBP",
+PKR:"🇵🇰 PKR",
+INR:"🇮🇳 INR",
+AED:"🇦🇪 AED",
+SAR:"🇸🇦 SAR",
+CAD:"🇨🇦 CAD",
+AUD:"🇦🇺 AUD",
+JPY:"🇯🇵 JPY",
+CNY:"🇨🇳 CNY"
+};
+
+const from=document.getElementById("fromCurrency");
+const to=document.getElementById("toCurrency");
+
+for(let c in currencyList){
+ from.innerHTML += `<option value="${c}">${currencyList[c]}</option>`;
+ to.innerHTML += `<option value="${c}">${currencyList[c]}</option>`;
+}
+
+from.value="USD";
+to.value="PKR";
+
+new TomSelect("#fromCurrency");
+new TomSelect("#toCurrency");
+
+const amount=document.getElementById("amount");
+const result=document.getElementById("result");
+const updated=document.getElementById("updated");
+
+async function convert(){
+
+ let amt=amount.value;
+
+ let res=await fetch(
+ `https://open.er-api.com/v6/latest/${from.value}`
+ );
+
+ let data=await res.json();
+
+ let rate=data.rates[to.value];
+
+ let total=(amt*rate).toFixed(2);
+
+ result.innerHTML=
+ `${amt} ${from.value} = ${total} ${to.value}`;
+
+ updated.innerHTML=
+ `Updated: ${new Date().toLocaleString()}`;
+
+ saveHistory(
+ `${amt} ${from.value} ➜ ${total} ${to.value}`
+ );
+}
+
+function saveHistory(item){
+
+ let history=
+ JSON.parse(localStorage.getItem("history")) || [];
+
+ history.unshift(item);
+
+ if(history.length>10)
+ history.pop();
+
+ localStorage.setItem(
+ "history",
+ JSON.stringify(history)
+ );
+
+ renderHistory();
+}
+
+function renderHistory(){
+
+ let history=
+ JSON.parse(localStorage.getItem("history")) || [];
+
+ let html="";
+
+ history.forEach(h=>{
+ html+=`<div class="history-item">${h}</div>`;
+ });
+
+ document.getElementById("history").innerHTML=html;
+}
+
+document.getElementById("swapBtn")
+.addEventListener("click",()=>{
+
+ let temp=from.value;
+ from.tomselect.setValue(to.value);
+ to.tomselect.setValue(temp);
+
+ convert();
+});
+
+amount.addEventListener("input",convert);
+
+from.addEventListener("change",convert);
+to.addEventListener("change",convert);
+
+document
+.getElementById("themeBtn")
+.addEventListener("click",()=>{
+
+ document.body.classList.toggle("dark");
+
+ localStorage.setItem(
+ "theme",
+ document.body.classList.contains("dark")
+ );
+
+});
+
+if(localStorage.getItem("theme")==="true"){
+ document.body.classList.add("dark");
+}
+
+function saveFavorite(){
+
+ let pair=
+ `${from.value}-${to.value}`;
+
+ let fav=
+ JSON.parse(localStorage.getItem("fav")) || [];
+
+ if(!fav.includes(pair)){
+  fav.push(pair);
+ }
+
+ localStorage.setItem(
+ "fav",
+ JSON.stringify(fav)
+ );
+
+ renderFav();
+}
+
+document
+.getElementById("saveFavorite")
+.addEventListener("click",saveFavorite);
+
+function renderFav(){
+
+ let fav=
+ JSON.parse(localStorage.getItem("fav")) || [];
+
+ let html="";
+
+ fav.forEach(f=>{
+
+ html+=`
+ <span onclick="loadFav('${f}')">
+ ${f}
+ </span>
+ `;
+ });
+
+ document.getElementById("favorites").innerHTML=html;
+}
+
+window.loadFav=function(pair){
+
+ let arr=pair.split("-");
+
+ from.tomselect.setValue(arr[0]);
+ to.tomselect.setValue(arr[1]);
+
+ convert();
+}
+
+renderFav();
+renderHistory();
+convert();
+
+</script>
+
+</body>
+</html>
+const amount = document.getElementById("amount");
+const from = document.getElementById("fromCurrency");
+const to = document.getElementById("toCurrency");
+const result = document.getElementById("result");
+const rateBox = document.getElementById("rateBox");
+const swapBtn = document.getElementById("swapBtn");
+
+const API = "https://api.frankfurter.app";
+
+// 🌍 Extended mapping for country + currency name display
+const currencyData = {
+  USD: "United States Dollar",
+  PKR: "Pakistani Rupee",
+  INR: "Indian Rupee",
+  AED: "UAE Dirham",
+  SAR: "Saudi Riyal",
+  QAR: "Qatari Riyal",
+  KWD: "Kuwaiti Dinar",
+  BHD: "Bahraini Dinar",
+  OMR: "Omani Rial",
+  EUR: "Euro (Europe)",
+  GBP: "British Pound (UK)",
+  CHF: "Swiss Franc (Switzerland)",
+  JPY: "Japanese Yen (Japan)",
+  CNY: "Chinese Yuan (China)",
+  KRW: "South Korean Won (South Korea)",
+  IDR: "Indonesian Rupiah (Indonesia)",
+  MYR: "Malaysian Ringgit (Malaysia)",
+  THB: "Thai Baht (Thailand)",
+  NGN: "Nigerian Naira (Nigeria)",
+  ZAR: "South African Rand (South Africa)",
+  EGP: "Egyptian Pound (Egypt)",
+  CAD: "Canadian Dollar (Canada)",
+  AUD: "Australian Dollar (Australia)",
+  NZD: "New Zealand Dollar (New Zealand)",
+  BRL: "Brazilian Real (Brazil)",
+  TRY: "Turkish Lira (Turkey)",
+  RUB: "Russian Ruble (Russia)"
+};
+
+// Load all currencies (API supports many more internally)
+async function loadCurrencies() {
+
+  const res = await fetch(API + "/currencies");
+  const data = await res.json();
+
+  for (let code in data) {
+
+    const label = currencyData[code]
+      ? currencyData[code]
+      : data[code];
+
+    const opt1 = new Option(label, code);
+    const opt2 = new Option(label, code);
+
+    from.appendChild(opt1);
+    to.appendChild(opt2);
+  }
+
+  from.value = "USD";
+  to.value = "PKR";
+
+  convert();
+}
+
+// Convert + show exchange rate
+async function convert() {
+
+  const res = await fetch(
+    `${API}/latest?amount=${amount.value}&from=${from.value}&to=${to.value}`
+  );
+
+  const data = await res.json();
+  const converted = data.rates[to.value];
+
+  const fromName = from.options[from.selectedIndex].text;
+  const toName = to.options[to.selectedIndex].text;
+
+  result.innerHTML = `
+    ${amount.value} ${fromName} = ${converted.toFixed(2)} ${toName}
+  `;
+
+  // 📊 Show 1 unit exchange rate clearly
+  const rateRes = await fetch(
+    `${API}/latest?amount=1&from=${from.value}&to=${to.value}`
+  );
+
+  const rateData = await rateRes.json();
+  const rate = rateData.rates[to.value];
+
+  rateBox.innerHTML = `
+    1 ${fromName} = ${rate.toFixed(4)} ${toName}
+  `;
+}
+
+// ⚡ Auto convert while typing
+amount.addEventListener("input", convert);
+from.addEventListener("change", convert);
+to.addEventListener("change", convert);
+
+// 🔄 Swap currencies
+swapBtn.onclick = () => {
+  [from.value, to.value] = [to.value, from.value];
+  convert();
+};
+
+// Load
+loadCurrencies();
+body {
+  margin: 0;
+  font-family: Arial;
+  background: linear-gradient(135deg, #1e3c72, #2a5298);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  color: white;
+}
+
+.app {
+  width: 95%;
+  max-width: 420px;
+  text-align: center;
+}
+
+h1 {
+  margin-bottom: 15px;
+}
+
+.card {
+  background: white;
+  color: black;
+  padding: 20px;
+  border-radius: 15px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+}
+
+input, select {
+  width: 100%;
+  padding: 12px;
+  margin: 8px 0;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  margin: 8px 0;
+  border: none;
+  border-radius: 8px;
+  background: #0077ff;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #005fd1;
+}
+
+.result {
+  margin-top: 10px;
+  font-size: 18px;
+  font-weight: bold;
+  background: #f3f3f3;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.rateBox {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #444;
+}
